@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import { TransactionsPage } from './pages/TransactionsPage'
 import {
   LayoutDashboard,
   CreditCard,
@@ -31,9 +32,7 @@ function ComingSoon({ title, description }: { title: string; description: string
 function DashboardPage() {
   return <ComingSoon title="Dashboard" description="Revenue at risk / recovered cards, charts, and live agent activity feed." />
 }
-function TransactionsPage() {
-  return <ComingSoon title="Transactions" description="Full transaction list with per-transaction audit timeline." />
-}
+// TransactionsPage is imported from pages/TransactionsPage.tsx
 function SimulationPage() {
   return <ComingSoon title="Run Simulation" description="Staged batch recovery simulation — 2,000 transactions, real computed numbers." />
 }
