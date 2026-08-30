@@ -1,17 +1,17 @@
 /**
- * Transactions page — functional check for Day 2.
- * Shows real data from the API: list + detail with risk signals + diagnosis.
- * Polished UI comes on Day 4 — today proves the pipe works.
+ * Transactions page — Day 2 + Day 3 additions.
+ * Day 2: real API list + detail with risk signals + diagnosis.
+ * Day 3: full-loop button + AI-vs-guardrail decision view.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   AlertTriangle, CheckCircle, XCircle, Clock, ChevronRight,
-  RefreshCw, ArrowLeft, Cpu, ShieldCheck, Zap, Bot, Wrench
+  RefreshCw, ArrowLeft, Cpu, ShieldCheck, Zap, Bot, Wrench, Play
 } from 'lucide-react';
 import {
-  getTransactions, getTransaction, analyzeTransaction,
-  type Transaction, type TransactionListResponse, type AnalysisResult,
+  getTransactions, getTransaction, analyzeTransaction, processTransaction,
+  type Transaction, type TransactionListResponse, type AnalysisResult, type ProcessResult,
 } from '../api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -200,8 +200,10 @@ function TransactionDetail({ id }: { id: string }) {
   const navigate = useNavigate();
   const [txn, setTxn] = useState<Transaction | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [processResult, setProcessResult] = useState<ProcessResult | null>(null);
   const [loadingTxn, setLoadingTxn] = useState(true);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [loadingProcess, setLoadingProcess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -218,13 +220,27 @@ function TransactionDetail({ id }: { id: string }) {
     try {
       const res = await analyzeTransaction(id);
       setAnalysis(res);
-      // Refresh txn to pick up persisted risk/decision
       const updated = await getTransaction(id);
       setTxn(updated);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoadingAnalysis(false);
+    }
+  };
+
+  const runFullLoop = async () => {
+    setLoadingProcess(true);
+    setError(null);
+    try {
+      const res = await processTransaction(id);
+      setProcessResult(res);
+      const updated = await getTransaction(id);
+      setTxn(updated);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoadingProcess(false);
     }
   };
 
@@ -287,19 +303,36 @@ function TransactionDetail({ id }: { id: string }) {
         ))}
       </div>
 
-      {/* Run analysis button */}
-      {txn.status === 'FAILED' && !pipeline && (
-        <button
-          onClick={runAnalysis}
-          disabled={loadingAnalysis}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-60"
-        >
-          {loadingAnalysis ? (
-            <><RefreshCw size={14} className="animate-spin" /> Running analysis…</>
-          ) : (
-            <><Cpu size={14} /> Run Risk + AI Analysis</>
+      {/* Action buttons */}
+      {txn.status === 'FAILED' && (
+        <div className="flex flex-wrap gap-3">
+          {!analysis && !processResult && (
+            <button
+              onClick={runAnalysis}
+              disabled={loadingAnalysis || loadingProcess}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1a2235] border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 text-sm font-medium transition-colors disabled:opacity-60"
+            >
+              {loadingAnalysis ? (
+                <><RefreshCw size={14} className="animate-spin" /> Analyzing…</>
+              ) : (
+                <><Cpu size={14} /> Diagnose Only</>  
+              )}
+            </button>
           )}
-        </button>
+          {!processResult && (
+            <button
+              onClick={runFullLoop}
+              disabled={loadingAnalysis || loadingProcess}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-60"
+            >
+              {loadingProcess ? (
+                <><RefreshCw size={14} className="animate-spin" /> Running full loop…</>
+              ) : (
+                <><Play size={14} /> Run Full Recovery Loop</>
+              )}
+            </button>
+          )}
+        </div>
       )}
 
       {/* Pipeline output */}
@@ -413,12 +446,109 @@ function TransactionDetail({ id }: { id: string }) {
                   ⚠ Blocked: {pipeline.strategy.blockerReason}
                 </div>
               )}
-              <div className="mt-2 p-3 rounded-lg bg-slate-500/10 border border-slate-500/20 text-slate-400 text-xs">
-                <ShieldCheck size={12} className="inline mr-1.5" />
-                Day 3 guardrail engine will enforce final execution policy (amount limits, retry caps, confidence gates)
-              </div>
+              {!processResult && (
+                <div className="mt-2 p-3 rounded-lg bg-slate-500/10 border border-slate-500/20 text-slate-400 text-xs">
+                  <ShieldCheck size={12} className="inline mr-1.5" />
+                  Click “Run Full Recovery Loop” to run guardrail checks and execute
+                </div>
+              )}
             </div>
           </div>
+
+          {/* ── Guardrail + Execution (processResult) ── */}
+          {processResult && (() => {
+            const g = processResult.pipeline.guardrail;
+            const ex = processResult.pipeline.execution;
+            const DECISION_COLORS: Record<string, string> = {
+              APPROVED: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+              ESCALATED: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+              BLOCKED:   'text-red-400 bg-red-500/10 border-red-500/20',
+              NO_ACTION: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+            };
+            const OUTCOME_COLORS: Record<string, string> = {
+              SUCCEEDED: 'text-emerald-400',
+              FAILED:    'text-red-400',
+              ESCALATED: 'text-yellow-400',
+              STOPPED:   'text-slate-400',
+              NO_ACTION: 'text-slate-400',
+            };
+            return (
+              <div className="rounded-xl bg-[#111827] border border-[#2a3a52] p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <ShieldCheck size={16} className="text-violet-400" />
+                  <h3 className="text-sm font-semibold text-slate-200">Guardrail Decision</h3>
+                  <span className={`ml-auto px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                    DECISION_COLORS[g.decision] ?? 'text-slate-400 bg-slate-500/10 border-slate-500/20'
+                  }`}>
+                    {g.decision}
+                  </span>
+                </div>
+
+                {/* Flow diagram */}
+                <div className="mb-4 flex flex-col gap-1 text-xs text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <Bot size={12} className="text-indigo-400" />
+                    <span>AI recommends: <span className="text-slate-200 font-medium">{processResult.pipeline.diagnosis.recommendedAction.replace(/_/g,' ')}</span></span>
+                    <span className="ml-1 text-indigo-400">({(processResult.pipeline.diagnosis.confidence*100).toFixed(0)}% conf)</span>
+                  </div>
+                  <div className="pl-3 border-l border-[#2a3a52] ml-1.5 py-1">↓</div>
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={12} className="text-violet-400" />
+                    <span className="font-medium text-slate-300">{g.checks.length} guardrail rules checked</span>
+                  </div>
+                  <div className="pl-3 border-l border-[#2a3a52] ml-1.5 py-1">↓</div>
+                  <div className="flex items-center gap-2">
+                    <Play size={12} className="text-emerald-400" />
+                    <span>Final decision: <span className={`font-semibold ${
+                      DECISION_COLORS[g.decision]?.split(' ')[0] ?? 'text-slate-300'
+                    }`}>{g.decision}</span></span>
+                    {g.allowed && <span className="text-slate-500">→ executed</span>}
+                  </div>
+                </div>
+
+                {/* Guardrail checks table */}
+                <div className="space-y-1.5 mb-4">
+                  {g.checks.map((c, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs">
+                      {c.passed
+                        ? <CheckCircle size={12} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                        : <XCircle size={12} className="text-red-400 mt-0.5 flex-shrink-0" />}
+                      <span className="text-slate-500 w-36 flex-shrink-0 font-mono">{c.rule}</span>
+                      <span className={c.passed ? 'text-slate-400' : 'text-red-300'}>{c.detail}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Execution outcome */}
+                <div className="border-t border-[#2a3a52] pt-4">
+                  <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">Execution Outcome</p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">Action</span>
+                    <span className="text-slate-200 font-medium">{ex.action.replace(/_/g,' ')}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm mt-1">
+                    <span className="text-slate-400">Status</span>
+                    <span className={`font-semibold ${
+                      OUTCOME_COLORS[ex.status] ?? 'text-slate-400'
+                    }`}>{ex.status}</span>
+                  </div>
+                  {ex.amountRecovered > 0 && (
+                    <div className="flex items-center justify-between text-sm mt-1">
+                      <span className="text-slate-400">Recovered</span>
+                      <span className="text-emerald-400 font-bold">{fmtINR(ex.amountRecovered)}</span>
+                    </div>
+                  )}
+                  <div className="mt-3 p-3 rounded-lg bg-[#1a2235] text-slate-300 text-xs leading-relaxed">
+                    {ex.outcomeReason}
+                  </div>
+                  <div className="mt-2 text-xs text-slate-600 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-600 inline-block" />
+                    Simulated — demo mode
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Audit log ── */}
           {txn.auditLogs && txn.auditLogs.length > 0 && (
@@ -426,6 +556,7 @@ function TransactionDetail({ id }: { id: string }) {
               <div className="flex items-center gap-2 mb-4">
                 <Clock size={16} className="text-slate-400" />
                 <h3 className="text-sm font-semibold text-slate-200">Audit Timeline</h3>
+                <span className="ml-auto text-xs text-slate-500">{txn.auditLogs.length} events</span>
               </div>
               <div className="space-y-3">
                 {txn.auditLogs.map((log, i) => (
