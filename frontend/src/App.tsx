@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router
 import { TransactionsPage } from './pages/TransactionsPage'
 import { SimulationPage } from './pages/SimulationPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { AuditPage } from './pages/AuditPage'
+import { ReviewPage } from './pages/ReviewPage'
 import {
   LayoutDashboard,
   CreditCard,
@@ -34,12 +36,21 @@ function ComingSoon({ title, description }: { title: string; description: string
 // DashboardPage imported from pages/DashboardPage.tsx
 // TransactionsPage imported from pages/TransactionsPage.tsx
 // SimulationPage imported from pages/SimulationPage.tsx
-// SimulationPage imported from pages/SimulationPage.tsx
-function ReviewPage() {
-  return <ComingSoon title="Human Review Queue" description="Escalated cases with Approve / Reject / Stop actions." />
-}
+// AuditPage imported from pages/AuditPage.tsx
+// ReviewPage imported from pages/ReviewPage.tsx
+
 function SettingsPage() {
-  return <ComingSoon title="Guardrail Settings" description="Read-only view of the deterministic guardrail thresholds." />
+  return (
+    <div className="flex flex-col items-center justify-center h-full min-h-96 gap-4">
+      <div className="w-16 h-16 rounded-2xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center">
+        <Shield size={28} className="text-slate-400" />
+      </div>
+      <h2 className="text-xl font-semibold text-slate-100">Guardrail Settings</h2>
+      <p className="text-slate-400 text-sm text-center max-w-sm">
+        Policy thresholds are displayed read-only on the Dashboard. Editable settings are a Day 6 stretch goal.
+      </p>
+    </div>
+  )
 }
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
@@ -48,7 +59,8 @@ const NAV_ITEMS = [
   { path: '/',            label: 'Dashboard',     icon: LayoutDashboard },
   { path: '/transactions', label: 'Transactions', icon: CreditCard },
   { path: '/simulation',  label: 'Run Simulation', icon: Play },
-  { path: '/review',      label: 'Human Review',  icon: ClipboardList },
+  { path: '/audit',       label: 'Audit Trail',   icon: ClipboardList },
+  { path: '/review',      label: 'Human Review',  icon: Shield },
   { path: '/settings',    label: 'Guardrails',    icon: Shield },
 ]
 
@@ -174,6 +186,7 @@ function AppShell() {
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/transactions/:id" element={<TransactionsPage />} />
             <Route path="/simulation"   element={<SimulationPage />} />
+            <Route path="/audit"        element={<AuditPage />} />
             <Route path="/review"       element={<ReviewPage />} />
             <Route path="/settings"     element={<SettingsPage />} />
           </Routes>
