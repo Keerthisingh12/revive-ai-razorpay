@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0a0d14;
+  color: #f1f5f9;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #111827;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a3a52;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6366f1;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #818cf8, #6366f1, #4f46e5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass card effect */
+.glass-card {
+  background: rgba(30, 45, 64, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(42, 58, 82, 0.8);
+}
+
+/* Glow effects for risk levels */
+.glow-success { box-shadow: 0 0 12px rgba(16, 185, 129, 0.25); }
+.glow-warning { box-shadow: 0 0 12px rgba(245, 158, 11, 0.25); }
+.glow-danger  { box-shadow: 0 0 12px rgba(239, 68, 68, 0.25); }
+.glow-primary { box-shadow: 0 0 12px rgba(99, 102, 241, 0.30); }
+
+/* Pulse animation for live activity */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Slide-in animation for activity feed */
+@keyframes slideInFromRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.slide-in {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+/* Fade-in */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
