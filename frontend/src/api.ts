@@ -299,3 +299,98 @@ export interface RiskSummaryFull {
 export function getFullRiskSummary(): Promise<RiskSummaryFull> {
   return request<RiskSummaryFull>('/risk/summary');
 }
+
+// ─── Audit Trail ──────────────────────────────────────────────────────────────
+
+export interface AuditLogEntry {
+  id: string;
+  transactionId: string;
+  eventType: string;
+  summary: string;
+  detail: Record<string, unknown>;
+  actor: string;
+  createdAt: string;
+  transaction?: {
+    id: string; amount: number; status: string;
+    failureCode?: string; merchantId: string; customerEmail: string;
+  };
+}
+
+export interface AuditFilters {
+  page?: number; limit?: number;
+  txnId?: string; eventType?: string;
+  search?: string; since?: string; until?: string;
+}
+
+export function getAuditLogs(filters: AuditFilters = {}): Promise<{
+  data: AuditLogEntry[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}> {
+  const p = new URLSearchParams();
+  if (filters.page)      p.set('page',      String(filters.page));
+  if (filters.limit)     p.set('limit',     String(filters.limit));
+  if (filters.txnId)     p.set('txnId',     filters.txnId);
+  if (filters.eventType) p.set('eventType', filters.eventType);
+  if (filters.search)    p.set('search',    filters.search);
+  if (filters.since)     p.set('since',     filters.since);
+  if (filters.until)     p.set('until',     filters.until);
+  return request(`/audit?${p}`);
+}
+
+export function getAuditTimeline(txnId: string): Promise<{
+  transaction: { id: string; amount: number; status: string; failureCode?: string };
+  logs: AuditLogEntry[];
+  count: number;
+}> {
+  return request(`/audit/${txnId}`);
+}
+
+// ─── Review Queue ─────────────────────────────────────────────────────────────
+
+export interface ReviewRecord {
+  id: string;
+  transactionId: string;
+  action: string;
+  outcome: string;
+  outcomeReason?: string;
+  executedAt: string;
+  transaction: {
+    id: string; amount: number; status: string;
+    failureCode?: string; merchantId: string; customerEmail: string;
+  } | null;
+  risk: { riskLevel: string; riskScore: number; amountAtRisk: number } | null;
+  agentDecision: {
+    diagnosis: string; recommendedAction: string; confidence: number;
+    guardrailDecision: string; guardrailReason: string;
+    guardrailChecks: Array<{ rule: string; passed: boolean; detail: string }>;
+  } | null;
+}
+
+export function getReviewQueue(page = 1, limit = 50): Promise<{
+  data: ReviewRecord[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}> {
+  return request(`/review?page=${page}&limit=${limit}`);
+}
+
+export function approveReview(txnId: string): Promise<{
+  transactionId: string; action: string; outcome: string;
+  amountRecovered: number; outcomeReason: string; auditRecords: number;
+}> {
+  return request(`/review/${txnId}/approve`, { method: 'POST',
+    body: JSON.stringify({ approvedBy: 'human:reviewer' }) });
+}
+
+export function rejectReview(txnId: string, reason = 'Manually rejected'): Promise<{
+  transactionId: string; outcome: string; reason: string;
+}> {
+  return request(`/review/${txnId}/reject`, { method: 'POST',
+    body: JSON.stringify({ rejectedBy: 'human:reviewer', reason }) });
+}
+
+export function stopReview(txnId: string, reason = 'Manually stopped'): Promise<{
+  transactionId: string; outcome: string; reason: string;
+}> {
+  return request(`/review/${txnId}/stop`, { method: 'POST',
+    body: JSON.stringify({ stoppedBy: 'human:reviewer', reason }) });
+}

@@ -17,6 +17,8 @@ import riskRouter from './routes/risk';
 import agentRouter from './routes/agent';
 import recoveryRouter from './routes/recovery';
 import simulationRouter from './routes/simulation';
+import auditRouter from './routes/audit';
+import reviewRouter from './routes/review';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -90,6 +92,8 @@ app.use('/api/v1/risk', riskRouter);
 app.use('/api/v1/agent/analyze', agentRouter);
 app.use('/api/v1/recovery/process', recoveryRouter);
 app.use('/api/v1/simulation', simulationRouter);
+app.use('/api/v1/audit', auditRouter);
+app.use('/api/v1/review', reviewRouter);
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 
