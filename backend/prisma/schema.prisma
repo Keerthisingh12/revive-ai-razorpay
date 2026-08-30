@@ -1,0 +1,204 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TransactionStatus {
+  PENDING
+  FAILED
+  CAPTURED
+  REFUNDED
+  AT_RISK
+}
+
+enum RecoveryAction {
+  RETRY
+  PAYMENT_LINK
+  REMINDER
+  SCHEDULE_RETRY
+  ESCALATE
+  STOP
+}
+
+enum GuardrailDecision {
+  APPROVED
+  DOWNGRADED
+  ESCALATED
+  BLOCKED
+}
+
+enum RecoveryOutcome {
+  RECOVERED
+  FAILED
+  PENDING
+  ESCALATED
+  STOPPED
+}
+
+enum AuditEventType {
+  RISK_DETECTED
+  AI_DIAGNOSIS
+  AI_RECOMMENDATION
+  GUARDRAIL_CHECK
+  ACTION_EXECUTED
+  OUTCOME_RECORDED
+  HUMAN_APPROVED
+  HUMAN_REJECTED
+  HUMAN_STOPPED
+}
+
+// ─── Core Transaction ─────────────────────────────────────────────────────────
+
+model Transaction {
+  id                String            @id @default(cuid())
+  razorpayPaymentId String?           @unique
+  merchantId        String
+  customerId        String
+  customerEmail     String
+  customerPhone     String?
+  amount            Float             // in INR paise → stored as rupees (Float for simplicity)
+  currency          String            @default("INR")
+  status            TransactionStatus @default(PENDING)
+  failureReason     String?           // ground-truth from synthetic data
+  failureCode       String?
+  isReturningCustomer Boolean         @default(false)
+  priorSuccessCount Int               @default(0)
+  priorFailureCount Int               @default(0)
+  retryCount        Int               @default(0)
+  optedOutOfContact Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  riskAssessment  RiskAssessment?
+  agentDecision   AgentDecision?
+  recoveryAction  RecoveryActionRecord?
+  auditLogs       AuditLog[]
+
+  @@index([merchantId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ─── Risk Assessment ─────────────────────────────────────────────────────────
+
+model RiskAssessment {
+  id              String    @id @default(cuid())
+  transactionId   String    @unique
+  riskLevel       RiskLevel
+  riskScore       Float     // 0.0 – 1.0
+  amountAtRisk    Float     // same as transaction.amount when failed
+  riskFactors     Json      // string[]
+  createdAt       DateTime  @default(now())
+
+  transaction     Transaction @relation(fields: [transactionId], references: [id])
+}
+
+// ─── Agent Decision ───────────────────────────────────────────────────────────
+
+model AgentDecision {
+  id                    String          @id @default(cuid())
+  transactionId         String          @unique
+  diagnosis             String
+  recommendedAction     RecoveryAction
+  confidence            Float           // 0.0 – 1.0
+  expectedRecoveryAmount Float
+  reason                String
+  aiRaw                 Json?           // full AI JSON output for audit
+  fallbackUsed          Boolean         @default(false)
+  guardrailDecision     GuardrailDecision
+  guardrailReason       String
+  guardrailChecks       Json            // array of { check, passed, detail }
+  finalAction           RecoveryAction
+  createdAt             DateTime        @default(now())
+
+  transaction           Transaction @relation(fields: [transactionId], references: [id])
+}
+
+// ─── Recovery Action Record ───────────────────────────────────────────────────
+
+model RecoveryActionRecord {
+  id              String          @id @default(cuid())
+  transactionId   String          @unique
+  action          RecoveryAction
+  executedAt      DateTime        @default(now())
+  outcome         RecoveryOutcome @default(PENDING)
+  amountRecovered Float           @default(0)
+  outcomeReason   String?
+  simulationRunId String?
+
+  transaction     Transaction @relation(fields: [transactionId], references: [id])
+  simulationRun   SimulationRun? @relation(fields: [simulationRunId], references: [id])
+
+  @@index([simulationRunId])
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id            String         @id @default(cuid())
+  transactionId String
+  eventType     AuditEventType
+  summary       String
+  detail        Json           // full structured payload for that step
+  actor         String         @default("system") // "system" | "human:{userId}" | "ai"
+  createdAt     DateTime       @default(now())
+
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  @@index([transactionId])
+  @@index([createdAt])
+}
+
+// ─── Simulation Run ───────────────────────────────────────────────────────────
+
+model SimulationRun {
+  id                    String   @id @default(cuid())
+  seed                  Int
+  totalTransactions     Int
+  atRiskCount           Int
+  atRiskAmount          Float
+  opportunityCount      Int      // passed guardrail → action attempted
+  approvedCount         Int
+  executedCount         Int
+  escalatedCount        Int
+  stoppedCount          Int
+  recoveredCount        Int
+  recoveredAmount       Float
+  recoveryRate          Float    // recoveredCount / atRiskCount
+  funnelData            Json     // full funnel array for the chart
+  durationMs            Int
+  completedAt           DateTime @default(now())
+
+  recoveryActions       RecoveryActionRecord[]
+}
+
+// ─── Merchant Policy ──────────────────────────────────────────────────────────
+
+model MerchantPolicy {
+  id                    String  @id @default(cuid())
+  merchantId            String  @unique
+  autoActionLimit       Float   @default(5000)    // below this → auto-execute
+  humanApprovalLimit    Float   @default(25000)   // above this → manual only
+  maxRetries            Int     @default(2)
+  confidenceThreshold   Float   @default(0.80)
+  maxContactsPerDay     Int     @default(2)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
