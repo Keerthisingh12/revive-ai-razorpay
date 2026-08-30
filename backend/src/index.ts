@@ -1,6 +1,6 @@
 /**
  * ReviveAI Backend — Express Entry Point
- * Day 2: Transaction API + Risk Engine + AI Diagnosis + Recovery Strategy wired up.
+ * Day 3: Guardrail Engine + Recovery Executor — full loop closes today.
  */
 
 import 'express-async-errors';
@@ -15,6 +15,7 @@ dotenv.config();
 import transactionsRouter from './routes/transactions';
 import riskRouter from './routes/risk';
 import agentRouter from './routes/agent';
+import recoveryRouter from './routes/recovery';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -49,22 +50,22 @@ app.get('/health', (_req, res) => {
 app.get('/api/v1', (_req, res) => {
   res.json({
     message: 'ReviveAI API v1',
-    day: 2,
+    day: 3,
     endpoints: {
       transactions: [
-        'GET  /api/v1/transactions                  — list with pagination, filters, search',
-        'GET  /api/v1/transactions/:id              — full detail with relations',
+        'GET  /api/v1/transactions                       — list with pagination, filters, search',
+        'GET  /api/v1/transactions/:id                   — full detail with relations',
       ],
       risk: [
-        'GET  /api/v1/risk/summary                  — aggregate risk stats (real computed)',
-        'GET  /api/v1/risk/transaction/:id          — per-transaction risk assessment',
+        'GET  /api/v1/risk/summary                       — aggregate risk stats (real computed)',
+        'GET  /api/v1/risk/transaction/:id               — per-transaction risk + signals',
       ],
       agent: [
-        'POST /api/v1/agent/analyze/:transactionId  — full pipeline: risk→diagnosis→strategy',
+        'POST /api/v1/agent/analyze/:id                  — risk → diagnosis → strategy (no execution)',
       ],
-      comingDay3: [
-        'POST /api/v1/guardrails/check/:id          — deterministic guardrail engine',
-        'POST /api/v1/recovery/execute/:id          — bounded executor',
+      recovery: [
+        'POST /api/v1/recovery/process/:id               — FULL LOOP: risk→diagnosis→guardrail→execute→audit',
+        'GET  /api/v1/recovery/process/:id               — fetch persisted result',
       ],
       comingDay4: [
         'POST /api/v1/simulation/run',
@@ -86,6 +87,7 @@ app.get('/api/v1', (_req, res) => {
 app.use('/api/v1/transactions', transactionsRouter);
 app.use('/api/v1/risk', riskRouter);
 app.use('/api/v1/agent/analyze', agentRouter);
+app.use('/api/v1/recovery/process', recoveryRouter);
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 

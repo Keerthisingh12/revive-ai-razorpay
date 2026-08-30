@@ -188,3 +188,47 @@ export function getRiskSummary(): Promise<RiskSummary> {
 export function getTransactionRisk(id: string): Promise<unknown> {
   return request<unknown>(`/risk/transaction/${id}`);
 }
+
+// ─── Process (full loop) ─────────────────────────────────────────────────────
+
+export interface GuardrailCheck {
+  rule: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface ProcessResult {
+  transactionId: string;
+  transaction: { amount: number; status: string; failureCode?: string; retryCount: number };
+  pipeline: {
+    risk: AnalysisResult['pipeline']['risk'];
+    diagnosis: AnalysisResult['pipeline']['diagnosis'] & { recommendedAction: string };
+    strategy: { strategy: string; reason: string; priority: string; estimatedRecoveryAmount: number };
+    guardrail: {
+      decision: string;
+      allowed: boolean;
+      checks: GuardrailCheck[];
+      reason: string;
+      policy: { autoActionLimit: number; humanApprovalLimit: number; maxRetries: number; confidenceThreshold: number };
+    };
+    execution: {
+      action: string;
+      status: string;
+      amountRecovered: number;
+      outcomeReason: string;
+      simulatedAt: string;
+      isSimulated: boolean;
+    };
+  };
+  summary: {
+    decision: string;
+    actionExecuted: string;
+    outcome: string;
+    amountRecovered: number;
+    isSimulated: boolean;
+  };
+}
+
+export function processTransaction(id: string): Promise<ProcessResult> {
+  return request<ProcessResult>(`/recovery/process/${id}`, { method: 'POST' });
+}
