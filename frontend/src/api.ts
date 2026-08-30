@@ -232,3 +232,70 @@ export interface ProcessResult {
 export function processTransaction(id: string): Promise<ProcessResult> {
   return request<ProcessResult>(`/recovery/process/${id}`, { method: 'POST' });
 }
+
+// ─── Simulation ───────────────────────────────────────────────────────────────
+
+export interface FunnelStep {
+  label: string;
+  value: number;
+  amount?: number;
+}
+
+export interface SimulationAggregates {
+  totalTransactions: number;
+  atRiskCount: number;
+  atRiskAmount: number;
+  opportunityCount: number;
+  approvedCount: number;
+  executedCount: number;
+  escalatedCount: number;
+  stoppedCount: number;
+  recoveredCount: number;
+  recoveredAmount: number;
+  recoveryRate: number;
+}
+
+export interface SimulationRun {
+  id: string;
+  completedAt: string;
+  durationMs: number;
+  durationSeconds: number;
+  seed: number;
+  aggregates: SimulationAggregates;
+  funnelData: FunnelStep[];
+  meta: { diagnosisMode: string; seed: string };
+}
+
+export interface SimulationRunResult extends SimulationRun {
+  runId: string;
+  status: string;
+  startedAt: string;
+}
+
+export function runSimulation(): Promise<SimulationRunResult> {
+  return request<SimulationRunResult>('/simulation/run', { method: 'POST' });
+}
+
+export function getLatestSimulation(): Promise<SimulationRun> {
+  return request<SimulationRun>('/simulation/latest');
+}
+
+export function getSimulationRuns(): Promise<{ runs: SimulationRun[]; count: number }> {
+  return request<{ runs: SimulationRun[]; count: number }>('/simulation');
+}
+
+// ─── Risk summary (for dashboard) ────────────────────────────────────────────
+
+export interface RiskSummaryFull {
+  total: number;
+  failed: number;
+  atRisk: number;
+  captured: number;
+  totalAtRiskAmount: number;
+  recoverableCount: number;
+  byRiskLevel: Record<string, number>;
+}
+
+export function getFullRiskSummary(): Promise<RiskSummaryFull> {
+  return request<RiskSummaryFull>('/risk/summary');
+}
