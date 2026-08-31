@@ -293,7 +293,7 @@ export interface RiskSummaryFull {
   captured: number;
   totalAtRiskAmount: number;
   recoverableCount: number;
-  byRiskLevel: Record<string, number>;
+  byRiskLevel: Record<string, { count: number; amount: number } | number>;
 }
 
 export function getFullRiskSummary(): Promise<RiskSummaryFull> {
