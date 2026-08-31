@@ -23,8 +23,16 @@ Thumbs.db
 *.swp
 *.swo
 
-# Prisma
-backend/prisma/migrations/**/migration.sql
+# Prisma — keep migrations tracked; only exclude generated client output
+backend/node_modules/.prisma/
+backend/prisma/generated/
 
-# TypeScript
+# TypeScript build info
 *.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# SQLite local dev (if ever used instead of Postgres)
+*.db
+*.sqlite
