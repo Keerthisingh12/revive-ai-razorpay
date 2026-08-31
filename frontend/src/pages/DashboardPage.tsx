@@ -164,9 +164,9 @@ export function DashboardPage() {
 
   // Risk level distribution for bar chart (from risk summary)
   const riskChartData = riskSummary?.byRiskLevel
-    ? Object.entries(riskSummary.byRiskLevel).map(([level, count]) => ({
+    ? Object.entries(riskSummary.byRiskLevel).map(([level, val]) => ({
         level,
-        count: count as number,
+        count: typeof val === 'object' ? val.count : (val as number),
       }))
     : [];
 
