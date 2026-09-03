@@ -9,7 +9,8 @@ import {
 } from 'lucide-react';
 import {
   runSimulation, getLatestSimulation,
-  type SimulationRun, type SimulationRunResult
+  type SimulationRun, type SimulationRunResult,
+  getBaselineComparison, type BaselineComparisonResult,
 } from '../api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -108,6 +109,171 @@ function MetricCard({ label, value, sub, color }: {
       <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{label}</p>
       <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
       {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+// ─── Baseline Comparison Panel (self-contained) ──────────────────────────────
+// Uses its own useState/useEffect — does NOT read or mutate SimulationPage state.
+
+function BaselineComparisonPanel() {
+  const [data, setData] = useState<BaselineComparisonResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    getBaselineComparison()
+      .then(setData)
+      .catch(() => setError('Could not load comparison — run a simulation first.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl bg-[#111827] border border-[#2a3a52] p-6 animate-pulse">
+        <div className="h-4 bg-[#1a2235] rounded w-48 mb-4" />
+        <div className="h-24 bg-[#1a2235] rounded" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return null;
+  }
+
+  // ReviveAI column may be null if no simulation run exists yet
+  if (!data.reviveai) {
+    return null;
+  }
+
+  const b = data.baseline;
+  const r = data.reviveai;
+  const s = data.safety;
+  const addl = data.additionalRevenueRecovered;
+
+  return (
+    <div className="rounded-2xl bg-[#111827] border border-[#2a3a52] p-6 space-y-5">
+      {/* Header */}
+      <div>
+        <h3 className="text-sm font-semibold text-slate-200">Baseline vs ReviveAI</h3>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Naive "retry everything once" vs guardrailed pipeline — same 2,000-transaction dataset.
+        </p>
+      </div>
+
+      {/* Comparison table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#2a3a52]">
+              <th className="text-left text-xs font-medium text-slate-500 pb-2">Metric</th>
+              <th className="text-right text-xs font-medium text-slate-500 pb-2 pr-4">Baseline</th>
+              <th className="text-right text-xs font-medium text-indigo-400 pb-2">ReviveAI</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#1a2235]">
+            <tr>
+              <td className="py-2 text-slate-400 text-xs">Recovered (₹)</td>
+              <td className="py-2 text-right pr-4 text-slate-300 font-medium">{fmtINR(b.recoveredAmount)}</td>
+              <td className="py-2 text-right text-indigo-300 font-medium">{fmtINR(r.recoveredAmount)}</td>
+            </tr>
+            <tr>
+              <td className="py-2 text-slate-400 text-xs">Recovery rate</td>
+              <td className="py-2 text-right pr-4 text-slate-300 font-medium">{b.recoveryRate}%</td>
+              <td className="py-2 text-right text-indigo-300 font-medium">{r.recoveryRate}%</td>
+            </tr>
+            <tr>
+              <td className="py-2 text-slate-400 text-xs">Actions taken</td>
+              <td className="py-2 text-right pr-4 text-slate-300 font-medium">{b.actionsCount.toLocaleString()}</td>
+              <td className="py-2 text-right text-indigo-300 font-medium">{r.actionsCount.toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Additional revenue note */}
+      {addl !== null && (
+        <p className="text-xs text-slate-400">
+          <span className="font-semibold text-slate-200">→</span>{' '}
+          {addl >= 0
+            ? <>{fmtINR(addl)} additional revenue recovered by ReviveAI over baseline.</>
+            : <>ReviveAI recovered {fmtINR(Math.abs(addl))} less than the naive baseline in raw ₹ — its advantage is <span className="text-yellow-400 font-semibold">safety</span>, not volume (see below).</>}
+        </p>
+      )}
+
+      {/* Safety section */}
+      <div className="border-t border-[#2a3a52] pt-4 space-y-3">
+        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Safety</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-[#0a0d14] rounded-lg p-3">
+            <p className="text-xs text-slate-500">Baseline risky actions</p>
+            <p className="text-xl font-bold text-orange-400 mt-0.5">{s.baselineRiskyActions.toLocaleString()}</p>
+            <p className="text-xs text-slate-600 mt-0.5">no safety checks applied</p>
+          </div>
+          <div className="bg-[#0a0d14] rounded-lg p-3">
+            <p className="text-xs text-slate-500">ReviveAI prevented</p>
+            <p className="text-xl font-bold text-emerald-400 mt-0.5">{s.preventedTransactionCount.toLocaleString()} transactions</p>
+            <p className="text-xs text-slate-600 mt-0.5">blocked by guardrail engine</p>
+          </div>
+        </div>
+
+        {/* byRule breakdown */}
+        {Object.keys(s.byRule).length > 0 && (
+          <div className="space-y-1.5">
+            {Object.entries(s.byRule)
+              .sort(([, a], [, b]) => b - a)
+              .map(([rule, count]) => (
+                <div key={rule} className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-mono">{rule}</span>
+                  <span className="text-slate-300 font-semibold tabular-nums">{count}</span>
+                </div>
+              ))}
+          </div>
+        )}
+
+        <p className="text-xs text-slate-600 italic">
+          Each prevented transaction is blocked by exactly one rule in this system, so these numbers add up to the total above.
+        </p>
+      </div>
+
+      {/* Strategy effectiveness table */}
+      {data.strategyEffectiveness && (
+        <div className="border-t border-[#2a3a52] pt-4 space-y-3">
+          <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Strategy Effectiveness</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#1a2235]">
+                  {['Failure Code', 'Action', 'Outcome', 'Count'].map(h => (
+                    <th key={h} className="text-left text-slate-500 pb-1.5 pr-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#0a0d14]">
+                {data.strategyEffectiveness.data.slice(0, 12).map((row, i) => (
+                  <tr key={i}>
+                    <td className="py-1.5 pr-3 text-slate-400 font-mono">{row.failureCode ?? '—'}</td>
+                    <td className="py-1.5 pr-3 text-slate-400">{row.action}</td>
+                    <td className="py-1.5 pr-3">
+                      <span className={`px-1.5 py-0.5 rounded text-xs ${
+                        row.outcome === 'RECOVERED' ? 'bg-emerald-500/15 text-emerald-400' :
+                        row.outcome === 'ESCALATED' ? 'bg-yellow-500/15 text-yellow-400' :
+                        row.outcome === 'STOPPED'   ? 'bg-slate-500/15 text-slate-400' :
+                        'bg-red-500/15 text-red-400'
+                      }`}>{row.outcome}</span>
+                    </td>
+                    <td className="py-1.5 tabular-nums text-slate-200 font-medium">{row.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-slate-600 italic leading-relaxed">
+            {data.strategyEffectiveness.caveat}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -344,7 +510,10 @@ export function SimulationPage() {
               </div>
             </div>
 
-            {/* Reproducibility note */}
+            {/* Baseline vs ReviveAI comparison */}
+            <BaselineComparisonPanel />
+
+            {/* Reproducible by design */}
             <div className="p-4 rounded-xl bg-[#1a2235] border border-[#2a3a52] text-xs text-slate-400 flex items-start gap-3">
               <RefreshCw size={14} className="text-indigo-400 mt-0.5 flex-shrink-0" />
               <span>

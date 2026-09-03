@@ -19,6 +19,7 @@ import recoveryRouter from './routes/recovery';
 import simulationRouter from './routes/simulation';
 import auditRouter from './routes/audit';
 import reviewRouter from './routes/review';
+import comparisonRouter from './routes/comparison';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -94,6 +95,7 @@ app.use('/api/v1/recovery/process', recoveryRouter);
 app.use('/api/v1/simulation', simulationRouter);
 app.use('/api/v1/audit', auditRouter);
 app.use('/api/v1/review', reviewRouter);
+app.use('/api/v1/comparison', comparisonRouter);
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 
