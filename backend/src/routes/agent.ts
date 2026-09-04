@@ -111,7 +111,7 @@ router.post('/:transactionId', async (req: Request, res: Response) => {
       aiRaw: toJson(diagnosis),
       fallbackUsed: diagnosis.source === 'FALLBACK',
       guardrailDecision: 'APPROVED',
-      guardrailReason: 'Pending Day 3 guardrail engine',
+      guardrailReason: 'Pending guardrail evaluation',
       guardrailChecks: [],
       finalAction: mappedAction,
     },
@@ -125,7 +125,7 @@ router.post('/:transactionId', async (req: Request, res: Response) => {
       aiRaw: toJson(diagnosis),
       fallbackUsed: diagnosis.source === 'FALLBACK',
       guardrailDecision: 'APPROVED',
-      guardrailReason: 'Pending Day 3 guardrail engine',
+      guardrailReason: 'Pending guardrail evaluation',
       guardrailChecks: [],
       finalAction: mappedAction,
     },
@@ -159,7 +159,7 @@ router.post('/:transactionId', async (req: Request, res: Response) => {
         estimatedRecoveryAmount: strategy.estimatedRecoveryAmount,
       },
     },
-    message: 'Analysis complete — Day 3 guardrail engine will enforce execution policy',
+    message: 'Analysis complete — guardrail engine will enforce execution policy',
   });
 });
 

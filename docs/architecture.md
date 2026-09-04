@@ -199,7 +199,8 @@ revive-ai-razorpay/
 │           ├── recovery.ts            — POST /process/:id (save + execute)
 │           ├── simulation.ts          — POST /run, GET /latest
 │           ├── audit.ts               — GET /audit (filtered)
-│           └── review.ts              — GET /review, POST approve/reject/stop
+│           ├── review.ts              — GET /review, POST approve/reject/stop
+│           └── comparison.ts          — GET /comparison/baseline (baseline vs ReviveAI)
 └── frontend/
     └── src/
         ├── pages/

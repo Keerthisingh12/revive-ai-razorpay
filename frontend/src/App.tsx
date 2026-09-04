@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
-// ─── Page skeletons (will be replaced Day 2+) ───────────────────────────────
+// ─── Auxiliary Pages ─────────────────────────────────────────────────────────
 
 function ComingSoon({ title, description }: { title: string; description: string }) {
   return (
@@ -27,7 +27,7 @@ function ComingSoon({ title, description }: { title: string; description: string
       <h2 className="text-xl font-semibold text-slate-100">{title}</h2>
       <p className="text-slate-400 text-sm text-center max-w-sm">{description}</p>
       <span className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-medium">
-        Building on Day {title === 'Dashboard' ? '4' : title === 'Transactions' ? '2' : title === 'Run Simulation' ? '4' : '5'}
+        Feature planned
       </span>
     </div>
   )
@@ -47,7 +47,7 @@ function SettingsPage() {
       </div>
       <h2 className="text-xl font-semibold text-slate-100">Guardrail Settings</h2>
       <p className="text-slate-400 text-sm text-center max-w-sm">
-        Policy thresholds are displayed read-only on the Dashboard. Editable settings are a Day 6 stretch goal.
+        Policy thresholds are displayed read-only on the Dashboard. Dynamic threshold management is planned for a future release.
       </p>
     </div>
   )
@@ -133,7 +133,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-[#2a3a52]">
-          <p className="text-[11px] text-slate-600">Razorpay Buildathon 2025</p>
+          <p className="text-[11px] text-slate-600">Razorpay Buildathon 2026</p>
           <p className="text-[11px] text-slate-600">Track 3 · AI Revenue Recovery</p>
         </div>
       </aside>

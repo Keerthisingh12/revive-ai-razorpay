@@ -1,6 +1,6 @@
 /**
  * Simulation Page — Run Batch Recovery
- * Day 4: staged progress animation + full results screen with funnel.
+ * Features staged progress animation, full results screen with funnel, and baseline comparison.
  */
 import { useState, useEffect } from 'react';
 import {
@@ -9,7 +9,8 @@ import {
 } from 'lucide-react';
 import {
   runSimulation, getLatestSimulation,
-  type SimulationRun, type SimulationRunResult
+  type SimulationRun, type SimulationRunResult,
+  getBaselineComparison, type BaselineComparisonResult,
 } from '../api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -108,6 +109,214 @@ function MetricCard({ label, value, sub, color }: {
       <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{label}</p>
       <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
       {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+// ─── Baseline Comparison Panel (self-contained) ──────────────────────────────
+// Uses its own useState/useEffect — does NOT read or mutate SimulationPage state.
+
+function BaselineComparisonPanel() {
+  const [data, setData] = useState<BaselineComparisonResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    getBaselineComparison()
+      .then(setData)
+      .catch(() => setError('Could not load comparison — run a simulation first.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl bg-[#111827] border border-[#2a3a52] p-6 animate-pulse">
+        <div className="h-4 bg-[#1a2235] rounded w-48 mb-4" />
+        <div className="h-24 bg-[#1a2235] rounded" />
+      </div>
+    );
+  }
+
+  if (error || !data || !data.reviveai) {
+    return null;
+  }
+
+  const b = data.baseline;
+  const r = data.reviveai;
+  const esc = data.escalated;
+  const s = data.safety;
+
+  return (
+    <div className="rounded-2xl bg-[#111827] border border-[#2a3a52] p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h3 className="text-sm font-semibold text-slate-200">Baseline vs ReviveAI Recovery & Safety</h3>
+        <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+          Baseline recovers more automatically because it retries everything, including high-value, low-confidence and otherwise unsafe cases. ReviveAI bounds automation with deterministic guardrails and routes higher-risk cases to human review.
+        </p>
+      </div>
+
+      {/* Raw Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Baseline Card */}
+        <div className="rounded-xl bg-[#0a0d14] border border-slate-800 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Baseline</span>
+            <span className="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
+              No safety checks
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-100">{fmtINR(b.recoveredAmount)}</span>
+            <span className="text-xs text-slate-400">recovered ({b.recoveryRate}%)</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-900">
+            <span>Recovered transactions:</span>
+            <span className="font-semibold text-slate-200 tabular-nums">{b.recoveredCount.toLocaleString()}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span>Actions attempted:</span>
+            <span className="font-semibold text-slate-200 tabular-nums">{b.actionsCount.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {/* ReviveAI Automated Card */}
+        <div className="rounded-xl bg-[#0a0d14] border border-indigo-950/60 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">ReviveAI Automated</span>
+            <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+              Automated with guardrails
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-emerald-400">{fmtINR(r.recoveredAmount)}</span>
+            <span className="text-xs text-slate-400">recovered ({r.recoveryRate}%)</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-900">
+            <span>Recovered transactions:</span>
+            <span className="font-semibold text-slate-200 tabular-nums">{r.recoveredCount.toLocaleString()}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span>Actions auto-executed:</span>
+            <span className="font-semibold text-slate-200 tabular-nums">{r.actionsCount.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Escalated & Hypothetical Recovery */}
+      {esc && (
+        <div className="rounded-xl bg-[#0f172a]/70 border border-indigo-500/20 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-300">
+              Escalated to Human Review (ReviveAI)
+            </span>
+            <span className="text-xs text-slate-400">
+              {esc.count} transactions · {fmtINR(esc.totalAmount)} total at risk
+            </span>
+          </div>
+
+          <div className="rounded-lg bg-[#0a0d14] border border-indigo-900/30 p-3">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-slate-400 font-medium">Hypothetical recovery if all approved:</span>
+              <span className="text-sm font-bold text-indigo-300">
+                {esc.hypotheticalRecoveredCount} txns / {fmtINR(esc.hypotheticalRecoveredAmount)}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1 italic">
+              {esc.label}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Safety Section */}
+      <div className="border-t border-[#2a3a52] pt-5 space-y-4">
+        <div>
+          <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
+            Safety & Risk Prevention
+          </h4>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Deterministic guardrails intercept unsafe retry attempts before execution.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="bg-[#0a0d14] rounded-lg p-3 border border-orange-500/20">
+            <p className="text-xs text-slate-400">Baseline risky actions</p>
+            <p className="text-xl font-bold text-orange-400 mt-0.5">
+              {s.baselineRiskyActions.toLocaleString()}{' '}
+              <span className="text-xs font-normal text-slate-400">({fmtINR(s.baselineRiskyAmount)})</span>
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">attempted with no safety checks</p>
+          </div>
+          <div className="bg-[#0a0d14] rounded-lg p-3 border border-emerald-500/20">
+            <p className="text-xs text-slate-400">ReviveAI prevented</p>
+            <p className="text-xl font-bold text-emerald-400 mt-0.5">
+              {s.preventedRiskyActions.toLocaleString()} actions{' '}
+              <span className="text-xs font-normal text-slate-400">({fmtINR(s.preventedRiskyAmount)})</span>
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">intercepted by guardrail engine</p>
+          </div>
+        </div>
+
+        {/* byRule breakdown */}
+        {Object.keys(s.byRule).length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            <p className="text-xs text-slate-400 font-medium mb-1">Prevented Actions by First Failing Rule:</p>
+            {Object.entries(s.byRule)
+              .sort(([, a], [, b]) => b - a)
+              .map(([rule, count]) => (
+                <div key={rule} className="flex items-center justify-between text-xs py-0.5 px-2 rounded bg-[#0a0d14]">
+                  <span className="text-slate-400 font-mono">{rule}</span>
+                  <span className="text-slate-200 font-semibold tabular-nums">{count}</span>
+                </div>
+              ))}
+          </div>
+        )}
+
+        <p className="text-xs text-slate-500 italic">
+          Each prevented transaction is blocked by exactly one rule in this system, so these numbers add up to the total above.
+        </p>
+      </div>
+
+      {/* Strategy effectiveness table */}
+      {data.strategyEffectiveness && (
+        <div className="border-t border-[#2a3a52] pt-5 space-y-3">
+          <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Strategy Effectiveness</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#1a2235]">
+                  {['Failure Code', 'Action', 'Outcome', 'Count'].map(h => (
+                    <th key={h} className="text-left text-slate-500 pb-1.5 pr-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#0a0d14]">
+                {data.strategyEffectiveness.data.slice(0, 12).map((row, i) => (
+                  <tr key={i}>
+                    <td className="py-1.5 pr-3 text-slate-400 font-mono">{row.failureCode ?? '—'}</td>
+                    <td className="py-1.5 pr-3 text-slate-400">{row.action}</td>
+                    <td className="py-1.5 pr-3">
+                      <span className={`px-1.5 py-0.5 rounded text-xs ${
+                        row.outcome === 'RECOVERED' ? 'bg-emerald-500/15 text-emerald-400' :
+                        row.outcome === 'ESCALATED' ? 'bg-yellow-500/15 text-yellow-400' :
+                        row.outcome === 'STOPPED'   ? 'bg-slate-500/15 text-slate-400' :
+                        'bg-red-500/15 text-red-400'
+                      }`}>{row.outcome}</span>
+                    </td>
+                    <td className="py-1.5 tabular-nums text-slate-200 font-medium">{row.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-slate-500 italic leading-relaxed">
+            {data.strategyEffectiveness.caveat}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -344,7 +553,10 @@ export function SimulationPage() {
               </div>
             </div>
 
-            {/* Reproducibility note */}
+            {/* Baseline vs ReviveAI comparison */}
+            <BaselineComparisonPanel />
+
+            {/* Reproducible by design */}
             <div className="p-4 rounded-xl bg-[#1a2235] border border-[#2a3a52] text-xs text-slate-400 flex items-start gap-3">
               <RefreshCw size={14} className="text-indigo-400 mt-0.5 flex-shrink-0" />
               <span>

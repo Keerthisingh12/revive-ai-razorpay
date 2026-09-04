@@ -3,11 +3,11 @@
  *
  * Combines risk assessment + AI diagnosis into a final recovery strategy.
  * This is a RECOMMENDATION only — not execution authority.
- * The Day 3 guardrail engine sits on top of this and decides what's allowed.
+ * The guardrail engine sits on top of this and decides what's allowed.
  *
  * Basic sense-checks are built in (max retries, unrecoverable cases),
  * but full policy enforcement (amount thresholds, confidence gates, cooldowns)
- * is Day 3's responsibility.
+ * is the guardrail engine's responsibility.
  */
 
 import type { Transaction } from '@prisma/client';
@@ -85,7 +85,7 @@ export function recommendStrategy(
   }
 
   // ── High-value transactions default to human escalation ───────────────────
-  // (Full threshold enforcement is Day 3; this is a first-pass recommendation)
+  // (Full threshold enforcement is handled by guardrailEngine; this is a first-pass recommendation)
   if (txn.amount >= 25000 && diagnosis.recommendedAction === 'RETRY_PAYMENT') {
     return {
       strategy: 'ESCALATE_TO_HUMAN',

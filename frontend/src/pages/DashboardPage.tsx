@@ -1,6 +1,6 @@
 /**
  * Dashboard Page — populated from latest simulation run + live risk summary.
- * Day 4: metric cards, recovery funnel, charts (Recharts), activity feed, guardrail policy.
+ * Displays metric cards, recovery funnel, analytical charts, activity feed, and guardrail policy.
  */
 import { useState, useEffect } from 'react';
 import {

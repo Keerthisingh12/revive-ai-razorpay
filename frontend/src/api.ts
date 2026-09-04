@@ -394,3 +394,58 @@ export function stopReview(txnId: string, reason = 'Manually stopped'): Promise<
   return request(`/review/${txnId}/stop`, { method: 'POST',
     body: JSON.stringify({ stoppedBy: 'human:reviewer', reason }) });
 }
+
+// ─── Baseline Comparison ──────────────────────────────────────────────────────
+
+export interface BaselineArm {
+  actionsCount: number;
+  recoveredCount: number;
+  recoveredAmount: number;
+  recoveryRate: number;
+  label: string;
+}
+
+export interface EscalatedArm {
+  count: number;
+  totalAmount: number;
+  hypotheticalRecoveredCount: number;
+  hypotheticalRecoveredAmount: number;
+  label: string;
+}
+
+export interface SafetyComparison {
+  baselineRiskyActions: number;
+  baselineRiskyAmount: number;
+  preventedRiskyActions: number;
+  preventedRiskyAmount: number;
+  byRule: Record<string, number>;
+  note: string;
+}
+
+export interface StrategyEffectivenessRow {
+  failureCode: string | null;
+  action: string;
+  outcome: string;
+  count: number;
+  totalRecovered: number;
+}
+
+export interface BaselineComparisonResult {
+  population: {
+    totalTransactions: number;
+    atRiskCount: number;
+    atRiskAmount: number;
+  };
+  baseline: BaselineArm;
+  reviveai: BaselineArm | null;
+  escalated: EscalatedArm | null;
+  safety: SafetyComparison;
+  strategyEffectiveness: {
+    data: StrategyEffectivenessRow[];
+    caveat: string;
+  } | null;
+}
+
+export function getBaselineComparison(): Promise<BaselineComparisonResult> {
+  return request<BaselineComparisonResult>('/comparison/baseline');
+}

@@ -3,7 +3,7 @@
  *
  * Runs all FAILED/AT_RISK transactions in the dataset through the same
  * Risk → Diagnosis → Strategy → Guardrail → Execute pipeline used by
- * the single-transaction endpoint (Day 3).
+ * the single-transaction recovery endpoint.
  *
  * Key design decisions:
  *   - Uses deterministic FALLBACK diagnosis for all batch runs (not live AI).
@@ -13,7 +13,7 @@
  *   - Writes a SimulationRun record; also upserts per-transaction records.
  *   - Does NOT write 6x AuditLog rows per transaction (that's 12,000 rows for a
  *     full batch). Instead writes one summary AuditLog per batch run.
- *     The audit trail exists for per-transaction single-process calls (Day 3).
+ *     The audit trail exists for per-transaction single-process calls.
  */
 
 import { prisma } from '../lib/prisma';
