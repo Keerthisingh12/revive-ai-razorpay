@@ -402,11 +402,22 @@ export interface BaselineArm {
   recoveredCount: number;
   recoveredAmount: number;
   recoveryRate: number;
+  label: string;
+}
+
+export interface EscalatedArm {
+  count: number;
+  totalAmount: number;
+  hypotheticalRecoveredCount: number;
+  hypotheticalRecoveredAmount: number;
+  label: string;
 }
 
 export interface SafetyComparison {
   baselineRiskyActions: number;
-  preventedTransactionCount: number;
+  baselineRiskyAmount: number;
+  preventedRiskyActions: number;
+  preventedRiskyAmount: number;
   byRule: Record<string, number>;
   note: string;
 }
@@ -427,12 +438,12 @@ export interface BaselineComparisonResult {
   };
   baseline: BaselineArm;
   reviveai: BaselineArm | null;
+  escalated: EscalatedArm | null;
   safety: SafetyComparison;
   strategyEffectiveness: {
     data: StrategyEffectivenessRow[];
     caveat: string;
   } | null;
-  additionalRevenueRecovered: number | null;
 }
 
 export function getBaselineComparison(): Promise<BaselineComparisonResult> {

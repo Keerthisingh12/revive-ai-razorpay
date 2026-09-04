@@ -108,9 +108,9 @@ Show `docs/architecture.md` or the diagram in the README.
 
 ## 7. Close (4:45–5:00 in video)
 
-**What's built:** risk engine, AI diagnosis with fallback, guardrail engine, recovery executor, audit trail, human review queue, batch simulation, dashboard.
+**What's built:** risk engine, AI diagnosis with fallback, guardrail engine, recovery executor, audit trail, human review queue, batch simulation, dashboard, baseline vs ReviveAI comparison.
 
-**What's not built (honest):** live Razorpay webhook integration, editable guardrail thresholds UI, baseline comparison simulation. These are documented in the README as future work.
+**What's not built (honest):** live Razorpay webhook integration, editable guardrail thresholds UI. These are documented in the README as future work.
 
 ---
 
@@ -122,6 +122,9 @@ curl -X POST http://localhost:3001/api/v1/simulation/run
 
 # Get latest results
 curl http://localhost:3001/api/v1/simulation/latest | python3 -m json.tool
+
+# Baseline vs ReviveAI comparison
+curl http://localhost:3001/api/v1/comparison/baseline | python3 -m json.tool
 
 # Analyze a transaction
 curl -X POST http://localhost:3001/api/v1/agent/analyze/txn_000001_42 | python3 -m json.tool

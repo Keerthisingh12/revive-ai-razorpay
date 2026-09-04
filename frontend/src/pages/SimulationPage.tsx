@@ -1,6 +1,6 @@
 /**
  * Simulation Page — Run Batch Recovery
- * Day 4: staged progress animation + full results screen with funnel.
+ * Features staged progress animation, full results screen with funnel, and baseline comparison.
  */
 import { useState, useEffect } from 'react';
 import {
@@ -138,108 +138,151 @@ function BaselineComparisonPanel() {
     );
   }
 
-  if (error || !data) {
-    return null;
-  }
-
-  // ReviveAI column may be null if no simulation run exists yet
-  if (!data.reviveai) {
+  if (error || !data || !data.reviveai) {
     return null;
   }
 
   const b = data.baseline;
   const r = data.reviveai;
+  const esc = data.escalated;
   const s = data.safety;
-  const addl = data.additionalRevenueRecovered;
 
   return (
-    <div className="rounded-2xl bg-[#111827] border border-[#2a3a52] p-6 space-y-5">
+    <div className="rounded-2xl bg-[#111827] border border-[#2a3a52] p-6 space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-200">Baseline vs ReviveAI</h3>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Naive "retry everything once" vs guardrailed pipeline — same 2,000-transaction dataset.
+        <h3 className="text-sm font-semibold text-slate-200">Baseline vs ReviveAI Recovery & Safety</h3>
+        <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+          Baseline recovers more automatically because it retries everything, including high-value, low-confidence and otherwise unsafe cases. ReviveAI bounds automation with deterministic guardrails and routes higher-risk cases to human review.
         </p>
       </div>
 
-      {/* Comparison table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#2a3a52]">
-              <th className="text-left text-xs font-medium text-slate-500 pb-2">Metric</th>
-              <th className="text-right text-xs font-medium text-slate-500 pb-2 pr-4">Baseline</th>
-              <th className="text-right text-xs font-medium text-indigo-400 pb-2">ReviveAI</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#1a2235]">
-            <tr>
-              <td className="py-2 text-slate-400 text-xs">Recovered (₹)</td>
-              <td className="py-2 text-right pr-4 text-slate-300 font-medium">{fmtINR(b.recoveredAmount)}</td>
-              <td className="py-2 text-right text-indigo-300 font-medium">{fmtINR(r.recoveredAmount)}</td>
-            </tr>
-            <tr>
-              <td className="py-2 text-slate-400 text-xs">Recovery rate</td>
-              <td className="py-2 text-right pr-4 text-slate-300 font-medium">{b.recoveryRate}%</td>
-              <td className="py-2 text-right text-indigo-300 font-medium">{r.recoveryRate}%</td>
-            </tr>
-            <tr>
-              <td className="py-2 text-slate-400 text-xs">Actions taken</td>
-              <td className="py-2 text-right pr-4 text-slate-300 font-medium">{b.actionsCount.toLocaleString()}</td>
-              <td className="py-2 text-right text-indigo-300 font-medium">{r.actionsCount.toLocaleString()}</td>
-            </tr>
-          </tbody>
-        </table>
+      {/* Raw Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Baseline Card */}
+        <div className="rounded-xl bg-[#0a0d14] border border-slate-800 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Baseline</span>
+            <span className="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
+              No safety checks
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-100">{fmtINR(b.recoveredAmount)}</span>
+            <span className="text-xs text-slate-400">recovered ({b.recoveryRate}%)</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-900">
+            <span>Recovered transactions:</span>
+            <span className="font-semibold text-slate-200 tabular-nums">{b.recoveredCount.toLocaleString()}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span>Actions attempted:</span>
+            <span className="font-semibold text-slate-200 tabular-nums">{b.actionsCount.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {/* ReviveAI Automated Card */}
+        <div className="rounded-xl bg-[#0a0d14] border border-indigo-950/60 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">ReviveAI Automated</span>
+            <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+              Automated with guardrails
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-emerald-400">{fmtINR(r.recoveredAmount)}</span>
+            <span className="text-xs text-slate-400">recovered ({r.recoveryRate}%)</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-900">
+            <span>Recovered transactions:</span>
+            <span className="font-semibold text-slate-200 tabular-nums">{r.recoveredCount.toLocaleString()}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span>Actions auto-executed:</span>
+            <span className="font-semibold text-slate-200 tabular-nums">{r.actionsCount.toLocaleString()}</span>
+          </div>
+        </div>
       </div>
 
-      {/* Additional revenue note */}
-      {addl !== null && (
-        <p className="text-xs text-slate-400">
-          <span className="font-semibold text-slate-200">→</span>{' '}
-          {addl >= 0
-            ? <>{fmtINR(addl)} additional revenue recovered by ReviveAI over baseline.</>
-            : <>ReviveAI recovered {fmtINR(Math.abs(addl))} less than the naive baseline in raw ₹ — its advantage is <span className="text-yellow-400 font-semibold">safety</span>, not volume (see below).</>}
-        </p>
+      {/* Escalated & Hypothetical Recovery */}
+      {esc && (
+        <div className="rounded-xl bg-[#0f172a]/70 border border-indigo-500/20 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-300">
+              Escalated to Human Review (ReviveAI)
+            </span>
+            <span className="text-xs text-slate-400">
+              {esc.count} transactions · {fmtINR(esc.totalAmount)} total at risk
+            </span>
+          </div>
+
+          <div className="rounded-lg bg-[#0a0d14] border border-indigo-900/30 p-3">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-slate-400 font-medium">Hypothetical recovery if all approved:</span>
+              <span className="text-sm font-bold text-indigo-300">
+                {esc.hypotheticalRecoveredCount} txns / {fmtINR(esc.hypotheticalRecoveredAmount)}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1 italic">
+              {esc.label}
+            </p>
+          </div>
+        </div>
       )}
 
-      {/* Safety section */}
-      <div className="border-t border-[#2a3a52] pt-4 space-y-3">
-        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Safety</h4>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-[#0a0d14] rounded-lg p-3">
-            <p className="text-xs text-slate-500">Baseline risky actions</p>
-            <p className="text-xl font-bold text-orange-400 mt-0.5">{s.baselineRiskyActions.toLocaleString()}</p>
-            <p className="text-xs text-slate-600 mt-0.5">no safety checks applied</p>
+      {/* Safety Section */}
+      <div className="border-t border-[#2a3a52] pt-5 space-y-4">
+        <div>
+          <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
+            Safety & Risk Prevention
+          </h4>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Deterministic guardrails intercept unsafe retry attempts before execution.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="bg-[#0a0d14] rounded-lg p-3 border border-orange-500/20">
+            <p className="text-xs text-slate-400">Baseline risky actions</p>
+            <p className="text-xl font-bold text-orange-400 mt-0.5">
+              {s.baselineRiskyActions.toLocaleString()}{' '}
+              <span className="text-xs font-normal text-slate-400">({fmtINR(s.baselineRiskyAmount)})</span>
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">attempted with no safety checks</p>
           </div>
-          <div className="bg-[#0a0d14] rounded-lg p-3">
-            <p className="text-xs text-slate-500">ReviveAI prevented</p>
-            <p className="text-xl font-bold text-emerald-400 mt-0.5">{s.preventedTransactionCount.toLocaleString()} transactions</p>
-            <p className="text-xs text-slate-600 mt-0.5">blocked by guardrail engine</p>
+          <div className="bg-[#0a0d14] rounded-lg p-3 border border-emerald-500/20">
+            <p className="text-xs text-slate-400">ReviveAI prevented</p>
+            <p className="text-xl font-bold text-emerald-400 mt-0.5">
+              {s.preventedRiskyActions.toLocaleString()} actions{' '}
+              <span className="text-xs font-normal text-slate-400">({fmtINR(s.preventedRiskyAmount)})</span>
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">intercepted by guardrail engine</p>
           </div>
         </div>
 
         {/* byRule breakdown */}
         {Object.keys(s.byRule).length > 0 && (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 pt-1">
+            <p className="text-xs text-slate-400 font-medium mb-1">Prevented Actions by First Failing Rule:</p>
             {Object.entries(s.byRule)
               .sort(([, a], [, b]) => b - a)
               .map(([rule, count]) => (
-                <div key={rule} className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-mono">{rule}</span>
-                  <span className="text-slate-300 font-semibold tabular-nums">{count}</span>
+                <div key={rule} className="flex items-center justify-between text-xs py-0.5 px-2 rounded bg-[#0a0d14]">
+                  <span className="text-slate-400 font-mono">{rule}</span>
+                  <span className="text-slate-200 font-semibold tabular-nums">{count}</span>
                 </div>
               ))}
           </div>
         )}
 
-        <p className="text-xs text-slate-600 italic">
+        <p className="text-xs text-slate-500 italic">
           Each prevented transaction is blocked by exactly one rule in this system, so these numbers add up to the total above.
         </p>
       </div>
 
       {/* Strategy effectiveness table */}
       {data.strategyEffectiveness && (
-        <div className="border-t border-[#2a3a52] pt-4 space-y-3">
+        <div className="border-t border-[#2a3a52] pt-5 space-y-3">
           <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Strategy Effectiveness</h4>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -269,7 +312,7 @@ function BaselineComparisonPanel() {
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-slate-600 italic leading-relaxed">
+          <p className="text-xs text-slate-500 italic leading-relaxed">
             {data.strategyEffectiveness.caveat}
           </p>
         </div>

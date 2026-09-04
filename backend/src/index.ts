@@ -1,6 +1,5 @@
 /**
  * ReviveAI Backend — Express Entry Point
- * Day 3: Guardrail Engine + Recovery Executor — full loop closes today.
  */
 
 import 'express-async-errors';
@@ -54,7 +53,6 @@ app.get('/health', (_req, res) => {
 app.get('/api/v1', (_req, res) => {
   res.json({
     message: 'ReviveAI API v1',
-    day: 3,
     endpoints: {
       transactions: [
         'GET  /api/v1/transactions                       — list with pagination, filters, search',
@@ -71,16 +69,21 @@ app.get('/api/v1', (_req, res) => {
         'POST /api/v1/recovery/process/:id               — FULL LOOP: risk→diagnosis→guardrail→execute→audit',
         'GET  /api/v1/recovery/process/:id               — fetch persisted result',
       ],
-      comingDay4: [
-        'POST /api/v1/simulation/run',
-        'GET  /api/v1/simulation/runs',
+      simulation: [
+        'POST /api/v1/simulation/run                     — run batch recovery simulation',
+        'GET  /api/v1/simulation/runs                    — list simulation runs',
+        'GET  /api/v1/simulation/latest                  — get latest simulation run',
       ],
-      comingDay5: [
-        'GET  /api/v1/audit',
-        'GET  /api/v1/review/queue',
-        'POST /api/v1/review/:actionId/approve',
-        'POST /api/v1/review/:actionId/reject',
-        'POST /api/v1/review/:actionId/stop',
+      audit: [
+        'GET  /api/v1/audit                              — list audit log entries with filters',
+      ],
+      review: [
+        'GET  /api/v1/review                             — list human review queue items',
+        'POST /api/v1/review/:id/approve                 — approve escalated action',
+        'POST /api/v1/review/:id/reject                  — reject escalated action',
+      ],
+      comparison: [
+        'GET  /api/v1/comparison/baseline                — baseline vs ReviveAI recovery & safety comparison',
       ],
     },
   });

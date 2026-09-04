@@ -1,7 +1,7 @@
 /**
  * Guardrail Engine — deterministic, LLM-free enforcement layer.
  *
- * Takes the recovery strategy recommendation from Day 2 and decides what is
+ * Takes the recovery strategy recommendation and decides what is
  * ACTUALLY allowed to execute. The LLM only recommends; this decides.
  *
  * Rules evaluated in order, all checks recorded for transparency:
@@ -14,7 +14,7 @@
  *   7. RETRY_COUNT           — retryCount >= maxRetries → STOP
  *   8. CONFIDENCE            — confidence < threshold → ESCALATE
  *
- * Output shape matches the frontend spec exactly (stable across Day 3–6).
+ * Output shape matches the frontend contract exactly.
  */
 
 import type { Transaction, RecoveryActionRecord } from '@prisma/client';

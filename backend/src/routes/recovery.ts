@@ -7,7 +7,7 @@
  *
  * Every stage writes a real AuditLog row. Nothing is faked.
  * The AgentDecision record is updated with the real guardrail decision (replacing
- * the "Pending Day 3" placeholder left by the Day 2 analyze endpoint).
+ * any preliminary placeholder if one was previously created).
  *
  * Additional route:
  *   GET /api/v1/recovery/process/:transactionId — fetch the persisted result

@@ -1,6 +1,6 @@
 /**
  * Audit Trail Page — filterable, paginated view of all AuditLog records.
- * Every row traces back to a real pipeline event (Day 3 or Day 4).
+ * Traces real pipeline events across single-transaction processes and batch simulation runs.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';

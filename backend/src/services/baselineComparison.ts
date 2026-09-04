@@ -6,6 +6,8 @@
  * Compares:
  *   1. Naive "retry everything once" baseline (no diagnosis, no guardrails)
  *   2. ReviveAI's existing guardrailed pipeline (read from latest SimulationRun)
+ *   3. Escalated pool & hypothetical recovery (clearly labeled as hypothetical)
+ *   4. Safety comparison: prevented risky actions and prevented risky amount
  *
  * Uses the exact same at-risk population logic as simulationEngine.ts.
  */
@@ -30,16 +32,27 @@ export interface BaselineComparisonResult {
     recoveredCount: number;
     recoveredAmount: number;
     recoveryRate: number;
+    label: string;
   };
   reviveai: {
     actionsCount: number;
     recoveredCount: number;
     recoveredAmount: number;
     recoveryRate: number;
+    label: string;
+  } | null;
+  escalated: {
+    count: number;
+    totalAmount: number;
+    hypotheticalRecoveredCount: number;
+    hypotheticalRecoveredAmount: number;
+    label: string;
   } | null;
   safety: {
     baselineRiskyActions: number;
-    preventedTransactionCount: number;
+    baselineRiskyAmount: number;
+    preventedRiskyActions: number;
+    preventedRiskyAmount: number;
     byRule: Record<string, number>;
     note: string;
   };
@@ -53,7 +66,6 @@ export interface BaselineComparisonResult {
     }>;
     caveat: string;
   } | null;
-  additionalRevenueRecovered: number | null;
 }
 
 // ─── Deterministic outcome mirror ─────────────────────────────────────────────
@@ -154,8 +166,8 @@ export async function runBaselineComparison(): Promise<BaselineComparisonResult>
   //   - run deterministic_diagnose, recommendStrategy, checkGuardrails
   //   - if guardrail.allowed === false, it's a prevented transaction
 
-  // preventedTransactionCount: unique txn IDs where baseline would act AND guardrail blocks
   const preventedIds = new Set<string>();
+  let preventedAmount = 0;
   const byRule: Record<string, number> = {};
 
   for (const txn of atRiskTxns) {
@@ -168,6 +180,7 @@ export async function runBaselineComparison(): Promise<BaselineComparisonResult>
 
     if (!guardrail.allowed) {
       preventedIds.add(txn.id);
+      preventedAmount += txn.amount;
 
       // The engine short-circuits on the first failed rule.
       // Find the first failed check — that is the rule that blocked this txn.
@@ -182,7 +195,6 @@ export async function runBaselineComparison(): Promise<BaselineComparisonResult>
   // ASSERT: sum(byRule values) === preventedTransactionCount
   const byRuleSum = Object.values(byRule).reduce((s, v) => s + v, 0);
   if (byRuleSum !== preventedTransactionCount) {
-    // This is a bug in the comparison code — surface it clearly
     throw new Error(
       `Invariant violation: sum(byRule) = ${byRuleSum} !== preventedTransactionCount = ${preventedTransactionCount}. ` +
       'This is a bug in baselineComparison.ts, not in guardrailEngine.ts.'
@@ -195,6 +207,7 @@ export async function runBaselineComparison(): Promise<BaselineComparisonResult>
   });
 
   let reviveai: BaselineComparisonResult['reviveai'] = null;
+  let escalated: BaselineComparisonResult['escalated'] = null;
 
   if (latestRun) {
     const reviveaiRecoveryRate =
@@ -207,13 +220,43 @@ export async function runBaselineComparison(): Promise<BaselineComparisonResult>
       recoveredCount:  latestRun.recoveredCount,
       recoveredAmount: latestRun.recoveredAmount,
       recoveryRate:    reviveaiRecoveryRate,
+      label:           'Automated with guardrails',
+    };
+
+    // ── Escalated set & hypothetical recovery ────────────────────────────────
+    const escalatedRecords = await prisma.recoveryActionRecord.findMany({
+      where: {
+        simulationRunId: latestRun.id,
+        outcome: 'ESCALATED',
+      },
+      include: { transaction: true },
+    });
+
+    const escalatedCount = escalatedRecords.length;
+    let escalatedTotalAmount = 0;
+    let hypotheticalRecoveredCount = 0;
+    let hypotheticalRecoveredAmount = 0;
+
+    for (const rec of escalatedRecords) {
+      if (!rec.transaction) continue;
+      escalatedTotalAmount += rec.transaction.amount;
+      if (mirrorSimulateSuccess(rec.transaction, rec.transaction.failureCode)) {
+        hypotheticalRecoveredCount++;
+        hypotheticalRecoveredAmount += rec.transaction.amount;
+      }
+    }
+
+    escalated = {
+      count: escalatedCount,
+      totalAmount: escalatedTotalAmount,
+      hypotheticalRecoveredCount,
+      hypotheticalRecoveredAmount,
+      label:
+        'Hypothetical — assumes every escalated case is approved and retried; not a guarantee and NOT counted as actual recovered revenue.',
     };
   }
 
-  // ── Strategy effectiveness (optional, read-only) ────────────────────────────
-  // Only included if it can be safely derived using simulationRunId as provenance.
-  // If no latestRun exists, skip entirely.
-
+  // ── Strategy effectiveness (read-only) ─────────────────────────────────────
   let strategyEffectiveness: BaselineComparisonResult['strategyEffectiveness'] = null;
 
   if (latestRun) {
@@ -253,12 +296,6 @@ export async function runBaselineComparison(): Promise<BaselineComparisonResult>
     };
   }
 
-  // ── additionalRevenueRecovered ───────────────────────────────────────────────
-  const additionalRevenueRecovered =
-    reviveai !== null
-      ? reviveai.recoveredAmount - baselineRecoveredAmount
-      : null;
-
   return {
     population: {
       totalTransactions,
@@ -270,15 +307,18 @@ export async function runBaselineComparison(): Promise<BaselineComparisonResult>
       recoveredCount:  baselineRecoveredCount,
       recoveredAmount: baselineRecoveredAmount,
       recoveryRate:    baselineRecoveryRate,
+      label:           'No safety checks',
     },
     reviveai,
+    escalated,
     safety: {
-      baselineRiskyActions:    baselineActionsCount,
-      preventedTransactionCount,
+      baselineRiskyActions:  preventedTransactionCount,
+      baselineRiskyAmount:   preventedAmount,
+      preventedRiskyActions: preventedTransactionCount,
+      preventedRiskyAmount:  preventedAmount,
       byRule,
-      note: 'baselineRiskyActions = number of transactions the naive baseline attempted with no safety checks. preventedTransactionCount = transactions where checkGuardrails() returned allowed=false. Each prevented transaction is counted by exactly one rule (the first failing rule the engine short-circuits on).',
+      note: 'Baseline risky actions = at-risk transactions the naive baseline attempted that fail guardrail checks. ReviveAI prevented = transactions blocked or escalated by deterministic guardrails to protect customer trust and compliance.',
     },
     strategyEffectiveness,
-    additionalRevenueRecovered,
   };
 }

@@ -4,8 +4,8 @@
  * All thresholds live here. In a future sprint these will be per-merchant
  * from the MerchantPolicy table. For now they read from env with safe defaults.
  *
- * A settings UI that renders these values read-only is built in Day 4.
- * An editable UI is a Day 6 stretch goal.
+ * Policy thresholds are displayed read-only on the Dashboard.
+ * Dynamic threshold configuration is supported via environment variables.
  */
 
 export interface GuardrailPolicy {

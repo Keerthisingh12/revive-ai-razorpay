@@ -1,7 +1,6 @@
 /**
- * Transactions page — Day 2 + Day 3 additions.
- * Day 2: real API list + detail with risk signals + diagnosis.
- * Day 3: full-loop button + AI-vs-guardrail decision view.
+ * Transactions page — paginated failed payments list + detailed inspection.
+ * Includes risk signals, AI diagnosis with fallback, guardrail checks, and full recovery pipeline.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';

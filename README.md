@@ -1,6 +1,6 @@
 # ReviveAI — Autonomous Payment Recovery Agent
 
-**Razorpay Buildathon 2025 · Track 3: AI Revenue Recovery**
+**Razorpay Buildathon 2026 · Track 3: AI Revenue Recovery**
 
 ---
 
@@ -13,6 +13,17 @@ Every day, thousands of payments fail silently — insufficient funds, bank time
 ReviveAI closes the loop. It detects which failed payments are at risk, uses AI to diagnose the root cause, recommends a recovery action, passes it through a deterministic guardrail engine (so the AI never directly executes a financial action), executes what's allowed, and measures exactly how much was recovered — across a full batch of 2,000 transactions in under a second.
 
 The core claim: **₹2.53L recovered from ₹53.96L at risk (34.4% recovery rate) across 2,000 transactions, reproducibly, with a complete audit trail.**
+
+### Baseline Comparison & Bounded Automation
+
+A naive "retry everything once" baseline recovers more raw revenue (₹22.89L across 226 transactions / 317 attempted actions) because it retries everything blindly with no safety checks. ReviveAI bounds automation with deterministic guardrails and routes higher-risk cases to human review:
+- **ReviveAI automated**: ₹2.53L recovered across 195 transactions with deterministic guardrails.
+- **Escalated to human review**: 240 transactions totaling ₹43.80L (with hypothetical recovery of 166 transactions / ₹34.02L if all approved; not counted as actual recovered revenue).
+- **Safety impact**: **157 risky baseline actions prevented** (representing ₹28.89L), intercepted deterministically by guardrail rules:
+  - `AMOUNT_LIMIT`: 78
+  - `HARD_CEILING`: 30
+  - `CONFIDENCE`: 28
+  - `UNRECOVERABLE_FAILURE`: 21
 
 ---
 
@@ -83,24 +94,24 @@ Transaction Dataset (2,000 seeded payments)
 
 | Feature | Status |
 |---|---|
-| Revenue Risk Engine (deterministic, 8 risk signals) | ✅ Day 2 |
-| AI Diagnosis via Gemini 1.5 Flash | ✅ Day 2 |
-| Deterministic FALLBACK diagnosis (runs when AI unavailable) | ✅ Day 2 |
-| Recovery Strategy Recommender | ✅ Day 3 |
-| Guardrail Engine (8 rules, 3 tiers, amount/confidence/retry thresholds) | ✅ Day 3 |
-| Recovery Executor (deterministic simulated outcomes, fixed seed) | ✅ Day 3 |
-| Full audit trail (every pipeline stage logged to AuditLog table) | ✅ Day 3 |
-| Batch Simulation Engine (2,000 txns, 0.1s, reproducible) | ✅ Day 4 |
-| Dashboard with funnel, charts, policy card (Recharts) | ✅ Day 4 |
-| Filterable Audit Trail page | ✅ Day 5 |
-| Human Review Queue with Approve/Reject/Stop | ✅ Day 5 |
-| Transactions list + per-transaction AI-vs-guardrail detail view | ✅ Day 2–3 |
-| Seeded dataset (2,000 realistic Indian payment failures) | ✅ Day 1 |
+| Revenue Risk Engine (deterministic, 8 risk signals) | ✅ Built |
+| AI Diagnosis via Gemini 1.5 Flash | ✅ Built |
+| Deterministic FALLBACK diagnosis (runs when AI unavailable) | ✅ Built |
+| Recovery Strategy Recommender | ✅ Built |
+| Guardrail Engine (8 rules, 3 tiers, amount/confidence/retry thresholds) | ✅ Built |
+| Recovery Executor (deterministic simulated outcomes, fixed seed) | ✅ Built |
+| Full audit trail (every pipeline stage logged to AuditLog table) | ✅ Built |
+| Batch Simulation Engine (2,000 txns, 0.1s, reproducible) | ✅ Built |
+| Dashboard with funnel, charts, policy card (Recharts) | ✅ Built |
+| Filterable Audit Trail page | ✅ Built |
+| Human Review Queue with Approve/Reject/Stop | ✅ Built |
+| Transactions list + per-transaction AI-vs-guardrail detail view | ✅ Built |
+| Baseline vs ReviveAI comparison & safety metrics | ✅ Built |
+| Seeded dataset (2,000 realistic Indian payment failures) | ✅ Built |
 
 **Not built (deliberate scope cuts):**
 - Live Razorpay webhook integration (test-mode only, would need deployed server)
 - Editable guardrail thresholds UI (thresholds visible read-only on dashboard)
-- Baseline comparison simulation (stretch goal, not attempted)
 - Multi-step human approval workflows or case assignment
 
 ---
@@ -182,6 +193,7 @@ POST /api/v1/recovery/process/:id    — same as above, saves result
 POST /api/v1/simulation/run          — batch simulation (2,000 txns, ~0.1s)
 GET  /api/v1/simulation/latest       — most recent run aggregates
 GET  /api/v1/simulation              — all simulation runs
+GET  /api/v1/comparison/baseline     — baseline vs ReviveAI recovery & safety comparison
 
 GET  /api/v1/audit                   — audit log (filters: txnId, eventType, search)
 GET  /api/v1/audit/:txnId            — full timeline for one transaction

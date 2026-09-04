@@ -10,7 +10,7 @@
  *   "FALLBACK" — deterministic rules were used (AI unavailable or invalid)
  *
  * The LLM is NEVER given execution authority. It only produces a recommendation.
- * The guardrail engine (Day 3) decides what's actually allowed to run.
+ * The guardrail engine decides what's actually allowed to run.
  */
 
 import { z } from 'zod';

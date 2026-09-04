@@ -1,7 +1,6 @@
-# Day 2 Notes — ReviveAI Backend API + Intelligence Layer
+# ReviveAI Intelligence Layer & Risk Engine Technical Notes
 
-**Branch:** `feature/risk-engine`
-**Date:** 2026-08-30
+**Component:** Intelligence Layer (`riskEngine`, `diagnosisAgent`, `strategyRecommender`)
 
 ---
 
@@ -65,7 +64,7 @@ Score computed from 6 explicit signals (all visible in the API response):
 | `confidence < 65%` | `ESCALATE_TO_HUMAN` |
 | Otherwise | Follows AI/fallback recommendation |
 
-**Note:** This `allowed` flag is a first-pass sanity check. Day 3's dedicated guardrail engine (amount limits, confidence gates, cooldown windows, dedup) sits on top.
+**Note:** This `allowed` flag is a first-pass sanity check. The dedicated guardrail engine (amount limits, confidence gates, cooldown windows, dedup) sits on top.
 
 ---
 
@@ -79,7 +78,7 @@ Score computed from 6 explicit signals (all visible in the API response):
 
 ---
 
-## Smoke test results (Day 2)
+## Verification & Smoke Test Results
 
 | Test | Result |
 |------|--------|
