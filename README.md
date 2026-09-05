@@ -29,14 +29,37 @@ A naive "retry everything once" baseline recovers more raw revenue (₹22.89L ac
 
 ## Screenshots
 
-> **Dashboard** — real computed numbers from the latest batch simulation run.
-> **Simulation** — staged progress through the recovery pipeline with funnel metrics.
-> **Human Review** — escalated high-value transactions with guardrail reasons + Approve/Reject/Stop.
-> **Audit Trail** — filterable timeline of every pipeline event, traceable to actual executions.
+### Dashboard
 
-*(See the pitch video for a live walkthrough.)*
+Real computed numbers from the latest batch simulation run.
 
----
+![ReviveAI Dashboard](docs/screenshots/dashboard.png)
+
+### Transactions
+
+Transaction-level view showing payment status, amount, and risk classification.
+
+![ReviveAI Transactions](docs/screenshots/transactions.png)
+
+### Simulation
+
+Full batch recovery pipeline across 2,000 seeded transactions, including recovery funnel and guardrail outcomes.
+
+![ReviveAI Simulation](docs/screenshots/simulation.png)
+
+### Human Review
+
+Escalated transactions with guardrail reasons and Approve / Reject / Stop actions.
+
+![ReviveAI Human Review](docs/screenshots/review.png)
+
+### Audit Trail
+
+Filterable timeline of pipeline events, including risk detection, AI diagnosis, guardrail checks, executions, and outcomes.
+
+![ReviveAI Audit Trail](docs/screenshots/audit.png)
+
+*See the pitch video for a live walkthrough.*
 
 ## How It Works — Core Recovery Loop
 
@@ -107,7 +130,7 @@ Transaction Dataset (2,000 seeded payments)
 | Human Review Queue with Approve/Reject/Stop | ✅ Built |
 | Transactions list + per-transaction AI-vs-guardrail detail view | ✅ Built |
 | Baseline vs ReviveAI comparison & safety metrics | ✅ Built |
-| Seeded dataset (2,000 realistic Indian payment failures) | ✅ Built |
+| Seeded dataset (2,000 realistic Indian payment transactions with controlled failure modes) | ✅ Built |
 
 **Not built (deliberate scope cuts):**
 - Live Razorpay webhook integration (test-mode only, would need deployed server)
@@ -215,7 +238,7 @@ GET  /health                         — server health + AI mode
 |---|---|
 | Frontend | React 18, TypeScript, Vite, Recharts, Lucide |
 | Backend | Node.js, Express, TypeScript |
-| Database | PostgreSQL 15 (via Docker) |
+| Database | PostgreSQL 16 (via Docker) |
 | ORM | Prisma |
 | AI | Google Gemini 1.5 Flash (`@google/generative-ai`) |
 | Styling | Vanilla CSS (dark theme) |
